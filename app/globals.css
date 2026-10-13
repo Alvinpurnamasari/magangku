@@ -1,26 +1,124 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DynaPuff:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #343434;
+
+  --magangku-orange: #ff941c;
+  --magangku-green: #39bd78;
+  --magangku-green-dark: #278b56;
+  --magangku-mint: #edfff5;
+  --magangku-mint-light: #f7fff9;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: "Baloo 2", sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 20px;
+  background: #ffffff;
 }
 
 body {
-  background: var(--background);
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-baloo), sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  color: #ffffff;
+  background: var(--magangku-green);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Font bulat untuk tampilan Magangku */
+.font-magangku {
+  font-family: 'DynaPuff', cursive;
+}
+
+
+@keyframes free-bounce {
+  0% {
+    transform: translateY(220px);
+    opacity: 0;
+  }
+
+  60% {
+    transform: translateY(-12px);
+    opacity: 1;
+  }
+
+  75% {
+    transform: translateY(4px);
+  }
+
+  88% {
+    transform: translateY(-3px);
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-free-bounce {
+  animation: free-bounce 1.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
 }
