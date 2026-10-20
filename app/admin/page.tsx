@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import LogoutButton from "@/components/admin/LogoutButton";
 
 const menu = [
   {
@@ -27,8 +28,18 @@ const menu = [
   {
     title: "Kontak & Pendaftaran",
     description: "Kelola nomor WhatsApp dan informasi pendaftaran.",
-    href: "/admin/pengaturan",
+    href: "/admin/contact",
   },
+  {
+    title: "Pengaturan Gambar",
+    description: "Ganti gambar Hero, Hero Lanjutan, Roket Fasilitas, dan Logo website.",
+    href: "/admin/pengaturan-gambar",
+  },
+  {
+    title: "Pengaturan Akun Admin",
+    description: "Ganti email dan password untuk login admin.",
+    href: "/admin/account",
+  }
 ];
 
 
@@ -63,7 +74,10 @@ export default async function AdminDashboardPage() {
           >
             Lihat Website
           </Link>
+
+          <LogoutButton />
         </div>
+        
       </header>
 
       <section className="mx-auto max-w-7xl px-6 py-10 md:px-10">
@@ -107,6 +121,7 @@ export default async function AdminDashboardPage() {
               >
                 Kelola menu →
               </Link>
+              
             </article>
           ))}
         </div>

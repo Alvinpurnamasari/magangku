@@ -26,13 +26,21 @@ export default function AdminLoginPage() {
         password,
       });
 
-      if (error) {
-        setError("Email atau password salah. Silakan periksa kembali.");
-        return;
-      }
+      
+    if (error) {
+      setError("Email atau password salah. Silakan periksa kembali.");
+      return;
+    }
 
-      router.replace("/admin");
-      router.refresh();
+    // Simpan waktu login admin
+    localStorage.setItem(
+      "magangku-admin-last-activity",
+      String(Date.now())
+    );
+
+    router.replace("/admin");
+    router.refresh();
+
     } catch {
       setError("Tidak dapat menghubungi server. Coba lagi.");
     } finally {

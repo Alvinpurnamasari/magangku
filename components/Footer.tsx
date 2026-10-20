@@ -1,5 +1,97 @@
+"use client";
 
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase";
+import SiteImage from "@/components/SiteImage";
+
+type ContactSettings = {
+  whatsapp_number: string;
+  whatsapp_url: string;
+  registration_url: string;
+  powered_by: string;
+};
+
+const defaultContact: ContactSettings = {
+  whatsapp_number: "0818 1818 1013",
+  whatsapp_url: "https://wa.link/y23pe4",
+  registration_url: "https://bit.ly/form_magangku",
+  powered_by: "www.Republikweb.net",
+};
 export default function Footer() {
+  const [contact, setContact] =
+
+  useState<ContactSettings>(defaultContact);
+
+  const whatsappUrl =
+  contact.whatsapp_number.trim() !== ""
+    ? `https://wa.me/${contact.whatsapp_number
+        .replace(/\D/g, "")
+        .replace(/^0/, "62")}`
+    : contact.whatsapp_url;
+
+useEffect(() => {
+  let active = true;
+  const supabase = createClient();
+
+  async function loadContact() {
+    const { data, error } = await supabase
+      .from("contact_content")
+      .select(
+        "whatsapp_number, whatsapp_url, registration_url, powered_by"
+      )
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (!active || error || !data) return;
+
+    setContact({
+      whatsapp_number:
+        data.whatsapp_number ?? defaultContact.whatsapp_number,
+      whatsapp_url:
+        data.whatsapp_url ?? defaultContact.whatsapp_url,
+      registration_url:
+        data.registration_url ?? defaultContact.registration_url,
+      powered_by:
+        data.powered_by ?? defaultContact.powered_by,
+    });
+  }
+
+  loadContact();
+
+  const channel = supabase
+    .channel("footer-contact-content")
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "contact_content",
+        filter: "id=eq.1",
+      },
+      (payload) => {
+        if (!active) return;
+
+        const data = payload.new as Partial<ContactSettings>;
+
+        setContact({
+          whatsapp_number:
+            data.whatsapp_number ?? defaultContact.whatsapp_number,
+          whatsapp_url:
+            data.whatsapp_url ?? defaultContact.whatsapp_url,
+          registration_url:
+            data.registration_url ?? defaultContact.registration_url,
+          powered_by:
+            data.powered_by ?? defaultContact.powered_by,
+        });
+      }
+    )
+    .subscribe();
+
+  return () => {
+    active = false;
+    supabase.removeChannel(channel);
+  };
+}, []);
     return (
       <footer
         id="footer"
@@ -80,23 +172,27 @@ export default function Footer() {
           </h2>
   
           <a
-            href="https://wa.link/y23pe4"
+            href={whatsappUrl}
             target="_blank"
             rel="noreferrer"
             className="mb-16 text-[30px] font-extrabold transition-colors hover:text-[#39bd78] sm:text-[36px]"
           >
-            0818 1818 1013
+            {contact.whatsapp_number}
           </a>
   
           <p className="mb-9 text-[20px] font-bold sm:text-[24px]">
-            powered by www.Republikweb.net
+            powered by {contact.powered_by}
           </p>
   
+       
           {/* Tombol pendaftaran */}
           <a
-            href="https://wa.link/y23pe4"
+            href={
+              contact.registration_url?.trim() ||
+              "https://bit.ly/form_magangku"
+            }
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             aria-label="Form pendaftaran Magangku"
             className="group relative inline-flex h-[62px] w-[235px] items-center justify-center transition-transform duration-200 hover:-translate-y-1"
           >
@@ -114,7 +210,6 @@ export default function Footer() {
                 strokeWidth="3"
                 strokeLinejoin="round"
               />
-  
               <path
                 d="M14 5 Q8 4 9 16 L11 41 Q11 52 24 52 L211 53 Q225 52 225 39 L223 15 Q222 5 210 6 L29 5 Z"
                 fill="#39bd78"
@@ -122,7 +217,6 @@ export default function Footer() {
                 strokeWidth="2.5"
                 strokeLinejoin="round"
               />
-  
               <g
                 stroke="#23794d"
                 strokeWidth="1.4"
@@ -140,16 +234,23 @@ export default function Footer() {
                 <path d="M216 45 l4 -3" />
               </g>
             </svg>
-  
+
             <span className="relative z-10 whitespace-nowrap font-magangku text-[14px] font-bold text-white sm:text-[15px]">
               FORM PENDAFTARAN
             </span>
           </a>
-  
-          <p className="mt-16 text-[14px] font-bold">
-            <span className="text-[#ff941c]">magangku</span>
-            <span className="text-[#39bd78]">.com</span>
-          </p>
+
+            
+          <div className="mt-16 text-center text-[14px] font-bold">
+            <div className="flex justify-center">
+              <SiteImage
+                type="logo"
+                fallbackSrc=""
+                alt="Logo Magangku"
+                className="h-auto max-h-16 max-w-[180px] object-contain"
+              />
+            </div>
+          </div>
         </div>
       </footer>
     );
