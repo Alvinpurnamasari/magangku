@@ -1,37 +1,109 @@
 
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  Wifi,
+  ClipboardList,
+  Mail,
+  UserRoundCheck,
+  Handshake,
+  ShieldCheck,
+  BookOpen,
+  Laptop,
+  Heart,
+  BriefcaseBusiness,
+  Trash2,
+  Plus,
+  Save,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
-export default function AdminSyaratPage() {
-  const router = useRouter();
+const ADMIN_UID = "eff9b7ee-bd27-48b2-9609-4d7f1885325c";
 
-  const [items, setItems] = useState<string[]>([]);
-  const [newItem, setNewItem] = useState("");
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState("");
+const iconOptions: { name: string; label: string; Icon: LucideIcon }[] = [
+  { name: "Wifi", label: "Wi-Fi", Icon: Wifi },
+  { name: "ClipboardList", label: "Pendaftaran", Icon: ClipboardList },
+  { name: "Mail", label: "Email", Icon: Mail },
+  { name: "UserRoundCheck", label: "Pengguna", Icon: UserRoundCheck },
+  { name: "Handshake", label: "Kerja sama", Icon: Handshake },
+  { name: "ShieldCheck", label: "Keamanan", Icon: ShieldCheck },
+  { name: "BookOpen", label: "Buku", Icon: BookOpen },
+  { name: "Laptop", label: "Laptop", Icon: Laptop },
+  { name: "Heart", label: "Hati", Icon: Heart },
+  { name: "BriefcaseBusiness", label: "Pekerjaan", Icon: BriefcaseBusiness },
+];
+
+type Requirement = {
+  text: string;
+  icon: string;
+};
+
+const defaultRequirements: Requirement[] = [
+  { text: "Memiliki Koneksi Internet Sendiri", icon: "Wifi" },
+  { text: "Daftarkan diri melalui WA magangku.com", icon: "ClipboardList" },
+  {
+    text: "Mengumpulkan surat pengantar dari kampus/sekolah melalui email",
+    icon: "Mail",
+  },
+  {
+    text: "Memiliki Niat positif mencari skill & pengalaman selama magang berjalan",
+    icon: "UserRoundCheck",
+  },
+  {
+    text: "Mau latihan hidup mandiri. Jadi lulus dari magang sudah siap hidup mandiri",
+    icon: "Handshake",
+  },
+  {
+    text: "Mau menjaga baik nama perusahaan, kampus/sekolah dan diri sendiri",
+    icon: "ShieldCheck",
+  },
+];
+
+function normalizeItems(items: unknown): Requirement[] {
+  if (!Array.isArray(items)) return defaultRequirements;
+
+  return items.map((item, index) => {
+    if (typeof item === "string") {
+      return {
+        text: item,
+        icon: defaultRequirements[index]?.icon ?? "BookOpen",
+      };
+    }
+
+    if (item && typeof item === "object" && "text" in item) {
+      const value = item as { text?: unknown; icon?: unknown };
+
+      return {
+        text: typeof value.text === "string" ? value.text : "",
+        icon:
+          typeof value.icon === "string" &&
+          iconOptions.some((option) => option.name === value.icon)
+            ? value.icon
+            : defaultRequirements[index]?.icon ?? "BookOpen",
+      };
+    }
+
+    return { text: "", icon: "BookOpen" };
+  });
+}
+
+export default function AdminSyaratPage() {
+  const [items, setItems] = useState<Requirement[]>(defaultRequirements);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
+
+  const supabase = createClient();
 
   useEffect(() => {
-    let active = true;
+    async function loadItems() {
+      const { data: authData } = await supabase.auth.getUser();
 
-    async function loadRequirements() {
-      const supabase = createClient();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!active) return;
-
-      if (!user) {
-        router.replace("/admin/login");
+      if (authData.user?.id !== ADMIN_UID) {
+        setMessage("Akses ditolak. Silakan login menggunakan akun admin.");
+        setLoading(false);
         return;
       }
 
@@ -41,297 +113,217 @@ export default function AdminSyaratPage() {
         .eq("id", 1)
         .maybeSingle();
 
-      if (!active) return;
-
       if (error) {
-        setMessage("Gagal memuat data: " + error.message);
-        setIsError(true);
-      } else if (!data) {
-        setMessage("Data persyaratan belum tersedia di Supabase.");
-        setIsError(true);
-      } else {
-        setItems(
-          Array.isArray(data.items)
-            ? data.items.filter(
-                (item: unknown): item is string =>
-                  typeof item === "string"
-              )
-            : []
-        );
+        setMessage("Gagal mengambil data: " + error.message);
+      } else if (data?.items) {
+        setItems(normalizeItems(data.items));
       }
 
       setLoading(false);
     }
 
-    loadRequirements();
+    loadItems();
+  }, []);
 
-    return () => {
-      active = false;
-    };
-  }, [router]);
+  function updateItem(
+    index: number,
+    field: "text" | "icon",
+    value: string
+  ) {
+    setItems((current) =>
+      current.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    );
+  }
 
-  async function saveItems(nextItems: string[]) {
-    setSaving(true);
+  function addItem() {
+    setItems((current) => [
+      ...current,
+      { text: "", icon: "BookOpen" },
+    ]);
+  }
+
+  function deleteItem(index: number) {
+    setItems((current) => current.filter((_, i) => i !== index));
+  }
+
+  async function saveItems() {
     setMessage("");
 
-    try {
-      const supabase = createClient();
+    const { data: authData } = await supabase.auth.getUser();
 
-      const { data: authData } = await supabase.auth.getUser();
-
-      if (
-        authData.user?.id !==
-        "eff9b7ee-bd27-48b2-9609-4d7f1885325c"
-      ) {
-        setMessage("Akses ditolak. Akun ini bukan admin yang berwenang.");
-        setIsError(true);
-        setSaving(false);
-        return false;
-      }
-
-      const { data, error } = await supabase
-        .from("requirements_content")
-        .update({
-          items: nextItems,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", 1)
-        .select("id")
-        .maybeSingle();
-
-      if (error) {
-        setMessage("Gagal menyimpan: " + error.message);
-        setIsError(true);
-        setSaving(false);
-        return false;
-      }
-
-      if (!data) {
-        setMessage(
-          "Data tidak berubah. Periksa policy UPDATE dan UID akun admin."
-        );
-        setIsError(true);
-        setSaving(false);
-        return false;
-      }
-
-      setItems(nextItems);
-      setMessage("Perubahan berhasil disimpan.");
-      setIsError(false);
-      return true;
-    } catch {
-      setMessage("Terjadi kesalahan saat menyimpan data.");
-      setIsError(true);
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleAdd(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    const value = newItem.trim();
-
-    if (!value) {
-      setMessage("Persyaratan tidak boleh kosong.");
-      setIsError(true);
+    if (authData.user?.id !== ADMIN_UID) {
+      setMessage("Akses ditolak. Silakan login sebagai admin.");
       return;
     }
 
-    const success = await saveItems([...items, value]);
-
-    if (success) setNewItem("");
-  }
-
-  async function handleEdit(index: number) {
-    const value = editValue.trim();
-
-    if (!value) {
-      setMessage("Persyaratan tidak boleh kosong.");
-      setIsError(true);
+    if (items.some((item) => !item.text.trim())) {
+      setMessage("Isi teks semua syarat terlebih dahulu.");
       return;
     }
 
-    const nextItems = [...items];
-    nextItems[index] = value;
+    setSaving(true);
 
-    const success = await saveItems(nextItems);
+    const { error } = await supabase
+      .from("requirements_content")
+      .update({
+        items: items.map((item) => ({
+          text: item.text.trim(),
+          icon: item.icon,
+        })),
+      })
+      .eq("id", 1);
 
-    if (success) {
-      setEditingIndex(null);
-      setEditValue("");
+    setSaving(false);
+
+    if (error) {
+      setMessage("Gagal menyimpan: " + error.message);
+      return;
     }
-  }
 
-  async function handleDelete(index: number) {
-    const confirmed = window.confirm(
-      `Hapus persyaratan "${items[index]}"?`
-    );
-
-    if (!confirmed) return;
-
-    const nextItems = items.filter((_, i) => i !== index);
-    await saveItems(nextItems);
+    setMessage("Syarat dan ikon berhasil disimpan.");
   }
 
   if (loading) {
-    return (
-      <main className="p-8 text-gray-600">
-        Memuat data persyaratan...
-      </main>
-    );
+    return <div className="p-8">Memuat data syarat...</div>;
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 sm:py-10">
+    <main className="min-h-screen bg-gray-50 p-4 sm:p-8">
       <div className="mx-auto max-w-4xl">
-        <Link
-          href="/admin"
-          className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-white px-4 py-2.5 text-sm font-semibold text-green-600 shadow-sm transition hover:bg-green-50 hover:text-green-700"
-        >
-          <span aria-hidden="true">←</span>
-          Kembali ke Dashboard Admin
-        </Link>
+        <div className="mb-6">
+          <h1 className="text-2xl font-extrabold text-gray-900">
+            Pengaturan Syarat & Ketentuan
+          </h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Ubah teks, pilih ikon, tambah, atau hapus syarat.
+          </p>
+        </div>
 
-        <h1 className="mt-4 text-2xl font-extrabold text-gray-800">
-          Kelola Syarat & Ketentuan
-        </h1>
+        {items.map((item, index) => {
+          const selectedIcon =
+            iconOptions.find((option) => option.name === item.icon) ??
+            iconOptions[6];
+          const Icon = selectedIcon.Icon;
+          const color = index % 2 === 0 ? "#39bd78" : "#ff941c";
 
-        <p className="mt-2 text-sm text-gray-500">
-          Tambah, ubah, atau hapus persyaratan peserta magang.
-        </p>
+          return (
+            <div
+              key={index}
+              className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-bold text-gray-800">
+                  Syarat {index + 1}
+                </h2>
+
+                <button
+                  type="button"
+                  onClick={() => deleteItem(index)}
+                  className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 size={16} />
+                  Hapus
+                </button>
+              </div>
+
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
+                Teks syarat
+              </label>
+              <textarea
+                value={item.text}
+                onChange={(event) =>
+                  updateItem(index, "text", event.target.value)
+                }
+                rows={2}
+                placeholder="Masukkan teks syarat..."
+                className="mb-4 w-full rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+              />
+
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
+                Pilih ikon
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {iconOptions.map(({ name, label, Icon: OptionIcon }) => {
+                  const selected = item.icon === name;
+
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => updateItem(index, "icon", name)}
+                      title={label}
+                      className={`flex h-12 w-12 items-center justify-center rounded-lg border-2 transition ${
+                        selected
+                          ? "border-gray-900 ring-2 ring-gray-200"
+                          : "border-gray-200 hover:border-gray-400"
+                      }`}
+                      style={{
+                        backgroundColor: selected ? color : "#ffffff",
+                        color: selected ? "#ffffff" : "#374151",
+                      }}
+                      aria-label={`Pilih ikon ${label}`}
+                      aria-pressed={selected}
+                    >
+                      <OptionIcon size={22} />
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex items-center gap-3 rounded-lg bg-gray-50 p-3">
+                <div
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 border-black"
+                  style={{ backgroundColor: color }}
+                >
+                  <Icon size={26} color="white" strokeWidth={2.5} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-500">
+                    Pratinjau ikon
+                  </p>
+                  <p className="break-words text-sm font-bold text-gray-800">
+                    {item.text || "Teks syarat akan muncul di sini"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={addItem}
+            className="flex items-center gap-2 rounded-lg border border-green-600 bg-white px-4 py-3 font-bold text-green-700 hover:bg-green-50"
+          >
+            <Plus size={18} />
+            Tambah Syarat
+          </button>
+
+          <button
+            type="button"
+            onClick={saveItems}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-3 font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save size={18} />
+            {saving ? "Menyimpan..." : "Simpan Perubahan"}
+          </button>
+        </div>
 
         {message && (
-          <div
-            role="status"
-            aria-live="polite"
-            className={`mt-5 rounded-lg border p-4 text-sm ${
-              isError
-                ? "border-red-200 bg-red-50 text-red-700"
-                : "border-green-200 bg-green-50 text-green-700"
+          <p
+            className={`mt-4 rounded-lg p-3 text-sm font-semibold ${
+              message.includes("berhasil")
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-700"
             }`}
           >
             {message}
-          </div>
+          </p>
         )}
-
-        <form
-          onSubmit={handleAdd}
-          className="mt-6 rounded-2xl border bg-white p-5 shadow-sm sm:p-6"
-        >
-          <h2 className="mb-4 font-bold text-gray-800">
-            Tambah Persyaratan
-          </h2>
-
-          <textarea
-            required
-            rows={3}
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            placeholder="Masukkan persyaratan baru..."
-            className="w-full rounded-lg border px-4 py-3 outline-none focus:border-green-500"
-          />
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="mt-3 rounded-lg bg-green-600 px-5 py-3 font-bold text-white hover:bg-green-700 disabled:opacity-50"
-          >
-            {saving ? "Menyimpan..." : "+ Tambah Persyaratan"}
-          </button>
-        </form>
-
-        <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="mb-4 font-bold text-gray-800">
-            Daftar Persyaratan ({items.length})
-          </h2>
-
-          {items.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              Belum ada persyaratan.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {items.map((item, index) => (
-                <div
-                  key={`${index}-${item}`}
-                  className="rounded-xl border border-gray-200 p-4"
-                >
-                  {editingIndex === index ? (
-                    <>
-                      <textarea
-                        rows={3}
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        className="w-full rounded-lg border px-3 py-2 outline-none focus:border-green-500"
-                      />
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => handleEdit(index)}
-                          className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                        >
-                          Simpan Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => {
-                            setEditingIndex(null);
-                            setEditValue("");
-                          }}
-                          className="rounded-lg border px-4 py-2 text-sm font-semibold"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-700">
-                          {index + 1}
-                        </span>
-
-                        <p className="pt-1 text-sm leading-6 text-gray-700">
-                          {item}
-                        </p>
-                      </div>
-
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => {
-                            setEditingIndex(index);
-                            setEditValue(item);
-                            setMessage("");
-                          }}
-                          className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => handleDelete(index)}
-                          className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
       </div>
     </main>
   );

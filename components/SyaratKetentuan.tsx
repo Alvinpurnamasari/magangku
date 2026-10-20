@@ -2,20 +2,111 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Wifi,
+  ClipboardList,
+  Mail,
+  UserRoundCheck,
+  Handshake,
+  ShieldCheck,
+  BookOpen,
+  Laptop,
+  Heart,
+  BriefcaseBusiness,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
-const defaultRequirements = [
-  "Memiliki Koneksi Internet Sendiri",
-  "Daftarkan diri melalui WA magangku.com",
-  "Mengumpulkan surat pengantar dari kampus/sekolah melalui email",
-  "Memiliki Niat positif mencari skill & pengalaman selama magang berjalan",
-  "Mau latihan hidup mandiri. Jadi lulus dari magang sudah siap hidup mandiri",
-  "Mau menjaga baik nama perusahaan, kampus/sekolah dan diri sendiri",
+type Requirement = {
+  text: string;
+  icon: string;
+};
+
+const defaultRequirements: Requirement[] = [
+  {
+    text: "Memiliki Koneksi Internet Sendiri",
+    icon: "Wifi",
+  },
+  {
+    text: "Daftarkan diri melalui WA magangku.com",
+    icon: "ClipboardList",
+  },
+  {
+    text: "Mengumpulkan surat pengantar dari kampus/sekolah melalui email",
+    icon: "Mail",
+  },
+  {
+    text: "Memiliki Niat positif mencari skill & pengalaman selama magang berjalan",
+    icon: "UserRoundCheck",
+  },
+  {
+    text: "Mau latihan hidup mandiri. Jadi lulus dari magang sudah siap hidup mandiri",
+    icon: "Handshake",
+  },
+  {
+    text: "Mau menjaga baik nama perusahaan, kampus/sekolah dan diri sendiri",
+    icon: "ShieldCheck",
+  },
 ];
+
+const requirementIcons: Record<string, LucideIcon> = {
+  Wifi,
+  ClipboardList,
+  Mail,
+  UserRoundCheck,
+  Handshake,
+  ShieldCheck,
+  BookOpen,
+  Laptop,
+  Heart,
+  BriefcaseBusiness,
+};
+
+const colorPattern = [
+  "#39bd78",
+  "#ff941c",
+  "#ff941c",
+  "#39bd78",
+];
+
+function normalizeRequirements(items: unknown): Requirement[] {
+  if (!Array.isArray(items)) return defaultRequirements;
+
+  return items.map((item: unknown, index: number) => {
+    // Mendukung data lama yang hanya berupa teks.
+    if (typeof item === "string") {
+      return {
+        text: item,
+        icon: defaultRequirements[index]?.icon ?? "BookOpen",
+      };
+    }
+
+    if (item && typeof item === "object" && "text" in item) {
+      const value = item as {
+        text?: unknown;
+        icon?: unknown;
+      };
+
+      return {
+        text: typeof value.text === "string" ? value.text : "",
+        icon:
+          typeof value.icon === "string" &&
+          requirementIcons[value.icon]
+            ? value.icon
+            : defaultRequirements[index]?.icon ?? "BookOpen",
+      };
+    }
+
+    return {
+      text: "",
+      icon: defaultRequirements[index]?.icon ?? "BookOpen",
+    };
+  });
+}
 
 export default function SyaratKetentuan() {
   const [requirements, setRequirements] =
-    useState<string[]>(defaultRequirements);
+    useState<Requirement[]>(defaultRequirements);
 
   useEffect(() => {
     let active = true;
@@ -31,41 +122,42 @@ export default function SyaratKetentuan() {
       if (!active) return;
 
       if (error) {
-        console.error("Gagal mengambil persyaratan:", error.message);
+        console.error(
+          "Gagal mengambil persyaratan:",
+          error.message
+        );
         return;
       }
 
-      if (
-        data &&
-        Array.isArray(data.items) &&
-        data.items.every((item: unknown) => typeof item === "string")
-      ) {
-        setRequirements(data.items);
+      if (data && Array.isArray(data.items)) {
+        setRequirements(normalizeRequirements(data.items));
       }
     }
 
     loadRequirements();
 
-    // Memperbarui tampilan ketika data berubah di Supabase.
     const channel = supabase
       .channel("requirements-content-changes")
       .on(
         "postgres_changes",
         {
-          event: "UPDATE",
+          event: "*",
           schema: "public",
           table: "requirements_content",
           filter: "id=eq.1",
         },
         (payload) => {
-          const items = payload.new.items;
+          if (!active) return;
 
           if (
-            active &&
-            Array.isArray(items) &&
-            items.every((item: unknown) => typeof item === "string")
+            payload.eventType === "UPDATE" ||
+            payload.eventType === "INSERT"
           ) {
-            setRequirements(items);
+            const items = payload.new.items;
+
+            if (Array.isArray(items)) {
+              setRequirements(normalizeRequirements(items));
+            }
           }
         }
       )
@@ -88,33 +180,34 @@ export default function SyaratKetentuan() {
 
       <div
         className="mx-auto grid grid-cols-1 gap-x-10 gap-y-5 md:grid-cols-2"
-        style={{ width: "100%", maxWidth: "860px" }}
+        style={{
+          width: "100%",
+          maxWidth: "860px",
+        }}
       >
-        {requirements.map((text, index) => {
-          const colorPattern = [
-            "#39bd78", // 1. Hijau
-            "#ff941c", // 2. Oranye
-            "#ff941c", // 3. Oranye
-            "#39bd78", // 4. Hijau
-          ];
-          
+        {requirements.map((item, index) => {
           const fill = colorPattern[index % colorPattern.length];
+          const Icon = requirementIcons[item.icon] ?? BookOpen;
 
           return (
             <div
-              key={`${index}-${text}`}
+              key={`${index}-${item.text}`}
               className="flex min-w-0 items-center gap-3"
               style={{ minHeight: "104px" }}
             >
-              {/* Kotak warna kecil bergaya coretan tangan */}
+              {/* Kotak ikon: bentuk coretan tangan tetap dipertahankan */}
               <div
-                className="relative shrink-0"
-                style={{ width: "76px", height: "82px" }}
+                className="relative flex shrink-0 items-center justify-center"
+                style={{
+                  width: "76px",
+                  height: "82px",
+                }}
               >
                 <svg
                   viewBox="0 0 90 90"
                   width="76"
                   height="82"
+                  className="absolute inset-0"
                   aria-hidden="true"
                 >
                   <path
@@ -148,12 +241,22 @@ export default function SyaratKetentuan() {
                     opacity="0.35"
                   />
                 </svg>
+
+                <Icon
+                  size={27}
+                  color="#ffffff"
+                  strokeWidth={2.5}
+                  className="relative z-10"
+                  aria-hidden="true"
+                />
               </div>
 
-              {/* Kartu teks */}
+              {/* Kartu teks: bentuk dan warna mengikuti desain awal */}
               <div
                 className="relative min-w-0 flex-1"
-                style={{ height: "104px" }}
+                style={{
+                  height: "104px",
+                }}
               >
                 <svg
                   viewBox="0 0 310 104"
@@ -187,7 +290,7 @@ export default function SyaratKetentuan() {
                     overflowWrap: "break-word",
                   }}
                 >
-                  {text}
+                  {item.text}
                 </div>
               </div>
             </div>
