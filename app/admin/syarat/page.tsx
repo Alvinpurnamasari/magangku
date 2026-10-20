@@ -1,6 +1,6 @@
 
 "use client";
-
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Wifi,
@@ -192,6 +192,13 @@ export default function AdminSyaratPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-4 sm:p-8">
       <div className="mx-auto max-w-4xl">
+      <Link
+          href="/admin"
+          className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-white px-4 py-2.5 text-sm font-semibold text-green-600 shadow-sm transition hover:bg-green-50 hover:text-green-700"
+        >
+          <span aria-hidden="true">←</span>
+          Kembali ke Dashboard Admin
+        </Link>
         <div className="mb-6">
           <h1 className="text-2xl font-extrabold text-gray-900">
             Pengaturan Syarat & Ketentuan
